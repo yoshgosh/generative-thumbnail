@@ -3,9 +3,9 @@
 タイトル文字列から決定論的な抽象画像を生成する CLI ツールです。
 同じタイトル・同じオプションなら、毎回同じ画像パターンになります。
 
-![Sample1](image/sample1.png)
+![Sample1](image/sample1.png)![Sample2](image/sample2.png)
 
-[ATELIER その他の作品例はこちら](./ATELIER.md)
+[その他の作品例はこちら](./ATELIER.md)
 
 ## 環境要件
 
