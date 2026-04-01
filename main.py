@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 # 画像生成のデフォルト値
 DEFAULT_SIZE = 500
 DEFAULT_OUTPUT_DIR = "output"
-DEFAULT_FONT_SCALE = 0.0625  # 1/16
+DEFAULT_FONT_SCALE = 0.05 # 1/20
 DEFAULT_TEXT_POSITION = "center"
 MIN_SIZE = 16
 
