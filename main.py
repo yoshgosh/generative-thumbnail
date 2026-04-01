@@ -84,6 +84,8 @@ def generate_thumbnail(
     text_position: str = DEFAULT_TEXT_POSITION,
     font_scale: float = DEFAULT_FONT_SCALE,
     size: int = DEFAULT_SIZE,
+    width: int | None = None,
+    height: int | None = None,
 ) -> str:
     """
     タイトルからサムネイル画像を生成する
@@ -109,11 +111,13 @@ def generate_thumbnail(
     random.seed(hash_value % (2**31))
     np.random.seed(hash_value % (2**31))
 
-    # 画像サイズ（デフォルト: 400x400）
-    size = max(MIN_SIZE, int(size))
+    # 画像サイズ（デフォルトは size x size、width/height があれば優先）
+    base_size = max(MIN_SIZE, int(size))
+    width = max(MIN_SIZE, int(width if width is not None else base_size))
+    height = max(MIN_SIZE, int(height if height is not None else base_size))
 
     # ベースパターンを生成（複雑かつ多元的な傾斜関数を使用）
-    pattern = np.zeros((size, size, 3), dtype=np.uint8)
+    pattern = np.zeros((height, width, 3), dtype=np.uint8)
 
     # より豊かで意的なカラーパレットを生成
     # HSV色空間を使用して色相、彩度、明度をコントロール
@@ -155,13 +159,15 @@ def generate_thumbnail(
     phase_params = [((hash_value >> (16 + i * 6)) % 100) / 100.0 for i in range(6)]
 
     # 座標網を作成
-    x_coords = np.arange(size)
-    y_coords = np.arange(size)
+    x_coords = np.arange(width)
+    y_coords = np.arange(height)
     xx, yy = np.meshgrid(x_coords, y_coords)
 
-    # 正規化座標 [0, 1]
-    xx_norm = xx / size
-    yy_norm = yy / size
+    # 座標を等方化して正規化 [0, 1]
+    # 長辺基準で正規化することで、長方形でもパターンの引き伸ばしを防ぐ
+    max_dim = float(max(width, height))
+    xx_norm = (xx - (width / 2.0)) / max_dim + 0.5
+    yy_norm = (yy - (height / 2.0)) / max_dim + 0.5
 
     # 座標軸を中心基準で回転（タイトルから一意に決定）
     axis_rotation_angle = ((hash_value >> 32) % 360) * (np.pi / 180.0)
@@ -213,7 +219,7 @@ def generate_thumbnail(
         warp_y = warp_y_new * 0.9 + warp_y * 0.1
 
     # 歪んだ座標でノイズを生成
-    field = np.zeros((size, size))
+    field = np.zeros((height, width))
 
     # Perlin風のグラデーションノイズを模擬
     # ハッシュベースのランダムグラディエント
@@ -241,7 +247,7 @@ def generate_thumbnail(
 
     # ランダムシードベースの高周波成分
     np.random.seed(hash_value % (2**31))
-    fine_noise = np.random.randn(size, size) * FINE_NOISE_STRENGTH
+    fine_noise = np.random.randn(height, width) * FINE_NOISE_STRENGTH
     field += fine_noise
 
     # 値を [0, 1] の範囲に正規化
@@ -260,7 +266,7 @@ def generate_thumbnail(
         warp_y_c = warp_y + extra_warp_factor * np.cos(2 * np.pi * (c + 2) * warp_x)
 
         # チャンネル固有のノイズパターン
-        channel_field = np.zeros((size, size))
+        channel_field = np.zeros((height, width))
 
         # ランダムグラディエントをチャンネルごとに異なるスケールで
         for freq_octave in range(CHANNEL_OCTAVES):
@@ -291,7 +297,7 @@ def generate_thumbnail(
         weights = COLOR_WEIGHTS.copy() / COLOR_WEIGHTS.sum()  # 正規化して確率分布に
 
         # 3色の加重合成
-        combined = np.zeros((size, size))
+        combined = np.zeros((height, width))
         for color_idx in range(3):
             color_component = channel_colors[color_idx][c]  # 各色のc番目チャンネル値
             color_contribution = (
@@ -320,7 +326,7 @@ def generate_thumbnail(
         draw = ImageDraw.Draw(img)
 
         # フォント設定（デフォルトは画像の1/20）
-        font_size = max(FONT_SIZE_MIN, int(size * font_scale))
+        font_size = max(FONT_SIZE_MIN, int(min(width, height) * font_scale))
 
         # Noto Sans JPボールドの場所を探す
         font_paths = FONT_PATHS
@@ -355,24 +361,24 @@ def generate_thumbnail(
 
         # 位置に応じてx, yを計算
         if text_position == "center":
-            x = (size - text_width) // 2 - bbox[0]
-            y = (size - text_height) // 2 - bbox[1]
+            x = (width - text_width) // 2 - bbox[0]
+            y = (height - text_height) // 2 - bbox[1]
         elif text_position == "top-left":
             x = padding - bbox[0]
             y = padding - bbox[1]
         elif text_position == "top-right":
-            x = size - text_width - padding - bbox[0]
+            x = width - text_width - padding - bbox[0]
             y = padding - bbox[1]
         elif text_position == "bottom-left":
             x = padding - bbox[0]
-            y = size - text_height - padding - bbox[1]
+            y = height - text_height - padding - bbox[1]
         elif text_position == "bottom-right":
-            x = size - text_width - padding - bbox[0]
-            y = size - text_height - padding - bbox[1]
+            x = width - text_width - padding - bbox[0]
+            y = height - text_height - padding - bbox[1]
         else:
             # デフォルト：中央
-            x = (size - text_width) // 2 - bbox[0]
-            y = (size - text_height) // 2 - bbox[1]
+            x = (width - text_width) // 2 - bbox[0]
+            y = (height - text_height) // 2 - bbox[1]
 
         # 白いテキストを描画
         draw.text((x, y), text, fill=(255, 255, 255), font=font)
@@ -384,7 +390,15 @@ def generate_thumbnail(
 
 def main():
     """メイン処理"""
-    parser = argparse.ArgumentParser(description="タイトルからサムネイル画像を生成する")
+    parser = argparse.ArgumentParser(
+        description="タイトルからサムネイル画像を生成する",
+        add_help=False,
+    )
+    parser.add_argument(
+        "--help",
+        action="help",
+        help="ヘルプメッセージを表示して終了",
+    )
     parser.add_argument("title", help="画像生成のベースとなるタイトル")
     parser.add_argument(
         "-t",
@@ -425,6 +439,20 @@ def main():
         help=f"生成する画像のピクセルサイズ（横幅=高さ、デフォルト: {DEFAULT_SIZE}）",
     )
     parser.add_argument(
+        "-w",
+        "--width",
+        type=int,
+        default=None,
+        help="生成する画像の横幅（指定時は --size より優先）",
+    )
+    parser.add_argument(
+        "-h",
+        "--height",
+        type=int,
+        default=None,
+        help="生成する画像の縦幅（指定時は --size より優先）",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         default=DEFAULT_OUTPUT_DIR,
@@ -445,6 +473,8 @@ def main():
             text_position=args.text_position,
             font_scale=args.font_scale,
             size=args.size,
+            width=args.width,
+            height=args.height,
         )
         print(f"✓ サムネイル画像を生成しました")
         print(f"  タイトル: {args.title}")
