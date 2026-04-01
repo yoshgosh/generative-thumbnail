@@ -163,10 +163,19 @@ def generate_thumbnail(
     xx_norm = xx / size
     yy_norm = yy / size
 
+    # 座標軸を中心基準で回転（タイトルから一意に決定）
+    axis_rotation_angle = ((hash_value >> 32) % 360) * (np.pi / 180.0)
+    axis_cos = np.cos(axis_rotation_angle)
+    axis_sin = np.sin(axis_rotation_angle)
+    xx_centered = xx_norm - 0.5
+    yy_centered = yy_norm - 0.5
+    xx_rot = xx_centered * axis_cos - yy_centered * axis_sin + 0.5
+    yy_rot = xx_centered * axis_sin + yy_centered * axis_cos + 0.5
+
     # 複数層の非線形座標歪み（周期性を完全に破壊）
     # 第1層：sin波による歪み
-    warp_x = xx_norm.copy().astype(float)
-    warp_y = yy_norm.copy().astype(float)
+    warp_x = xx_rot.copy().astype(float)
+    warp_y = yy_rot.copy().astype(float)
 
     # 複数の周波数で座標を順序立てて歪める
     for warp_layer in range(WARP_LAYERS):
