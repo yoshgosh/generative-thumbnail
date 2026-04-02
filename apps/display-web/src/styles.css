@@ -4,6 +4,8 @@
     --muted: #b5b5b5;
     --line: #ffffff;
     --error: #ff7d7d;
+    --history-gap: 6px;
+    --page-inline-padding: 16px;
 }
 
 * {
@@ -26,7 +28,7 @@ body {
 
 .page {
     min-height: 100vh;
-    padding: 20px 16px 28px;
+    padding: 20px var(--page-inline-padding) 28px;
 }
 
 .page-title {
@@ -49,6 +51,11 @@ body {
     aspect-ratio: 1 / 1;
     object-fit: cover;
     background: #acacac;
+}
+
+.hero-image-card {
+    position: relative;
+    width: min(400px, calc(100vw - 40px));
 }
 
 .generate-form {
@@ -108,39 +115,86 @@ body {
 }
 
 .section-head {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     min-width: 160px;
     padding-bottom: 2px;
-    border-bottom: 1px solid var(--line);
     font-size: 20px;
     font-weight: 300;
 }
 
+.section-head::after {
+    content: '';
+    position: absolute;
+    left: calc(-1 * (var(--page-inline-padding) - var(--history-gap)));
+    right: 0;
+    bottom: 0;
+    border-bottom: 1px solid var(--line);
+}
+
 .history-grid {
-    --history-gap: 6px;
     margin-top: 14px;
-    display: flex;
-    justify-content: center;
-    gap: var(--history-gap);
     width: 100vw;
     margin-left: calc(50% - 50vw);
-    padding-inline: var(--history-gap);
-    box-sizing: border-box;
 }
 
 .history-grid-inner {
     display: grid;
-    grid-template-columns: repeat(var(--history-columns), var(--history-tile-size));
+    grid-template-columns: repeat(var(--history-columns), minmax(0, 1fr));
     gap: var(--history-gap);
+    padding-inline: var(--history-gap);
 }
 
 .history-item {
+    display: block;
     width: 100%;
     aspect-ratio: 1 / 1;
     object-fit: cover;
     background: #acacac;
+}
+
+.history-card {
+    position: relative;
+}
+
+.history-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.history-download-text {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 20px;
+    font-family: inherit;
+    font-weight: 300;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.history-download-text:hover,
+.history-download-text:focus-visible {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    outline: none;
+}
+
+.history-card:hover .history-overlay,
+.history-card:focus-within .history-overlay,
+.hero-image-card:hover .history-overlay,
+.hero-image-card:focus-within .history-overlay {
+    opacity: 1;
 }
 
 .sr-only {

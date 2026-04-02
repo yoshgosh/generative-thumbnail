@@ -20,7 +20,7 @@ export default function App() {
         generated: false,
     });
     const [history, setHistory] = useState<HistoryItem[]>([]);
-    const [historyLayout, setHistoryLayout] = useState({ columns: 1, tileSize: 250 });
+    const [historyLayout, setHistoryLayout] = useState({ columns: 1 });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -30,10 +30,15 @@ export default function App() {
         const maxTile = 350;
 
         const recalc = () => {
-            const available = Math.max(320, window.innerWidth - gap * 2);
-            const columns = Math.max(1, Math.floor((available + gap) / (minTile + gap)));
-            const tileSize = Math.min(maxTile, (available - gap * (columns - 1)) / columns);
-            setHistoryLayout({ columns, tileSize });
+            const available = Math.max(0, window.innerWidth - gap * 2);
+
+            // Pick the smallest column count that keeps each tile <= maxTile.
+            // This makes tile width expand/shrink with viewport while preserving edge gutters.
+            const columnsByMax = Math.max(1, Math.ceil((available + gap) / (maxTile + gap)));
+            const columnsByMin = Math.max(1, Math.floor((available + gap) / (minTile + gap)));
+            const columns = Math.min(columnsByMax, columnsByMin + 1);
+
+            setHistoryLayout({ columns });
         };
 
         recalc();
@@ -74,12 +79,42 @@ export default function App() {
         }
     };
 
+    const handleDownload = (item: HistoryItem, index: number) => {
+        const a = document.createElement('a');
+        a.href = item.url;
+        a.download = `${item.title || 'thumbnail'}-${index + 1}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
+
+    const handleDownloadCurrent = () => {
+        const a = document.createElement('a');
+        a.href = currentImage.url;
+        a.download = `${currentImage.title || 'thumbnail'}-latest.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
+
     return (
         <main className="page">
             <h1 className="page-title">Generative Thumbnail</h1>
 
             <section className="hero">
-                <img src={currentImage.url} alt={currentImage.title} className="hero-image" />
+                <div className="hero-image-card">
+                    <img src={currentImage.url} alt={currentImage.title} className="hero-image" />
+                    <div className="history-overlay">
+                        <button
+                            type="button"
+                            className="history-download-text"
+                            aria-label={`Download ${currentImage.title}`}
+                            onClick={handleDownloadCurrent}
+                        >
+                            Download
+                        </button>
+                    </div>
+                </div>
 
                 <form onSubmit={handleSubmit} className="generate-form">
                     <label className="sr-only" htmlFor="title-input">
@@ -118,17 +153,27 @@ export default function App() {
                         style={
                             {
                                 ['--history-columns' as string]: historyLayout.columns,
-                                ['--history-tile-size' as string]: `${historyLayout.tileSize}px`,
                             } as CSSProperties
                         }
                     >
                         {history.map((item, index) => (
-                        <img
-                            key={`${item.url}-${index}`}
-                            src={item.url}
-                            alt={item.title}
-                            className="history-item"
-                        />
+                            <div key={`${item.url}-${index}`} className="history-card">
+                                <img
+                                    src={item.url}
+                                    alt={item.title}
+                                    className="history-item"
+                                />
+                                <div className="history-overlay">
+                                    <button
+                                        type="button"
+                                        className="history-download-text"
+                                        aria-label={`Download ${item.title}`}
+                                        onClick={() => handleDownload(item, index)}
+                                    >
+                                        Download
+                                    </button>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </div>
