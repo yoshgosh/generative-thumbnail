@@ -129,8 +129,8 @@ resource generateApiFunc 'Microsoft.Web/sites@2024-11-01' = {
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: generateApiAppi.properties.ConnectionString }
         { name: 'AZURE_IMGS_STORAGE_CONNECTION_STRING', value: 'DefaultEndpointsProtocol=https;AccountName=${imgsSt.name};AccountKey=${imgsSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
         { name: 'AZURE_IMGS_STORAGE_CONTAINER', value: imgsContainerName }
-        { name: 'CLEANUP_SCHEDULE', value: '0 */15 * * * *' }
-        { name: 'MAX_IMAGES_PER_ALGORITHM', value: '10' }
+        { name: 'CLEANUP_SCHEDULE', value: '0 0 3 * * *' }
+        { name: 'MAX_IMAGES_PER_ALGORITHM', value: '50' }
       ]
     }
   }

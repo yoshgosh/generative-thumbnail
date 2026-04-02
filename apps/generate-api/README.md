@@ -33,6 +33,8 @@ func start
 
 - `GET /api/generate`
 - `POST /api/generate`
+- `GET /api/history`
+- `GET /api/history/image`
 
 ### 主なパラメータ
 
@@ -51,6 +53,18 @@ func start
 - `text`: `n`, `c`, `tl`, `tr`, `bl`, `br`
 - 同一 Blob 名が存在する場合は `overwrite=true` で更新
 
+### History 取得仕様（`GET /api/history`）
+
+- `limit`（任意, 既定 `12`, 最大 `100`）
+- `last_modified` の新しい順で返却
+- レスポンス例:
+  - `items[]`: `blob_name`, `algorithm`, `file_name`, `title`, `width`, `height`, `text_token`, `last_modified`
+
+### History画像取得仕様（`GET /api/history/image`）
+
+- `blob_name`（必須）
+- 指定 Blob の `image/png` バイト列を返却
+
 ## リクエスト例
 
 ```bash
@@ -64,6 +78,10 @@ curl -X POST "http://localhost:7071/api/generate" \
   --output out.png
 ```
 
+```bash
+curl "http://localhost:7071/api/history?limit=12"
+```
+
 ## 補足
 
 - `local.settings.json` はローカル専用（`.gitignore` / `.funcignore` 済み）
@@ -72,5 +90,5 @@ curl -X POST "http://localhost:7071/api/generate" \
   - `AZURE_IMGS_STORAGE_CONNECTION_STRING`
   - `AZURE_IMGS_STORAGE_CONTAINER`
 - 定期クリーンアップ設定:
-  - `CLEANUP_SCHEDULE`（NCRONTAB, 既定 `0 */15 * * * *`）
+  - `CLEANUP_SCHEDULE`（NCRONTAB, 既定 `0 0 3 * * *`（毎日03:00 UTC））
   - `MAX_IMAGES_PER_ALGORITHM`（アルゴリズムごとの保持上限、既定 `50`）

@@ -1,5 +1,6 @@
 import { type CSSProperties, FormEvent, useEffect, useState } from 'react';
 import { generateThumbnail } from './api/generate';
+import { buildHistoryImageUrl, getRecentHistory } from './api/history';
 
 type DownloadScale = 'x1' | 'x2' | 'x4';
 type DownloadRatio = '1:1' | '4:3' | '16:9';
@@ -116,6 +117,31 @@ export default function App() {
         recalc();
         window.addEventListener('resize', recalc);
         return () => window.removeEventListener('resize', recalc);
+    }, []);
+
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                const items = await getRecentHistory(12);
+                if (!alive) {
+                    return;
+                }
+                setHistory(
+                    items.map((item) => ({
+                        url: buildHistoryImageUrl(item.blob_name),
+                        title: item.title,
+                        fileName: item.file_name,
+                        shared: true,
+                    })),
+                );
+            } catch {
+                // keep empty history on initial load failure
+            }
+        })();
+        return () => {
+            alive = false;
+        };
     }, []);
 
     const handleSubmit = async (e: FormEvent) => {

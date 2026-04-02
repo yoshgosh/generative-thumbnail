@@ -1,11 +1,17 @@
 import json
 import os
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import azure.functions as func
 from pydantic import ValidationError
 
-from src.blob_storage import delete_old_blobs_for_algorithm, save_png_to_imgs_storage, to_text_token
+from src.blob_storage import (
+    get_blob_png_bytes,
+    delete_old_blobs_for_algorithm,
+    list_recent_shared_items,
+    save_png_to_imgs_storage,
+    to_text_token,
+)
 from src.image_generator import DEFAULT_ALGORITHM_NAME, list_algorithms
 from src.api_models import GenerateRequest
 from src.thumbnail_service import (
@@ -15,7 +21,9 @@ from src.thumbnail_service import (
 )
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
-DEFAULT_MAX_IMAGES_PER_ALGORITHM = 10
+DEFAULT_MAX_IMAGES_PER_ALGORITHM = 50
+DEFAULT_HISTORY_LIMIT = 12
+MAX_HISTORY_LIMIT = 100
 
 
 def _content_disposition(filename_base: str) -> str:
@@ -131,6 +139,61 @@ def _resolve_max_images_per_algorithm() -> int:
         return max(0, int(raw))
     except ValueError:
         return DEFAULT_MAX_IMAGES_PER_ALGORITHM
+
+
+def _resolve_history_limit(req: func.HttpRequest) -> int:
+    raw = req.params.get("limit")
+    if raw is None:
+        return DEFAULT_HISTORY_LIMIT
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return DEFAULT_HISTORY_LIMIT
+    return max(1, min(parsed, MAX_HISTORY_LIMIT))
+
+
+@app.route(route="history", methods=["GET"])
+def history(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        limit = _resolve_history_limit(req)
+        items = list_recent_shared_items(limit=limit)
+        return func.HttpResponse(
+            json.dumps({"items": items, "limit": limit, "count": len(items)}),
+            status_code=200,
+            mimetype="application/json",
+        )
+    except Exception as exc:
+        return func.HttpResponse(
+            json.dumps({"error": str(exc)}),
+            status_code=500,
+            mimetype="application/json",
+        )
+
+
+@app.route(route="history/image", methods=["GET"])
+def history_image(req: func.HttpRequest) -> func.HttpResponse:
+    raw_blob_name = req.params.get("blob_name", "")
+    blob_name = unquote(raw_blob_name).strip()
+    if not blob_name or "/" not in blob_name or not blob_name.lower().endswith(".png"):
+        return func.HttpResponse(
+            json.dumps({"error": "invalid blob_name"}),
+            status_code=400,
+            mimetype="application/json",
+        )
+    try:
+        png_bytes = get_blob_png_bytes(blob_name)
+        return func.HttpResponse(
+            body=png_bytes,
+            status_code=200,
+            mimetype="image/png",
+            headers={"Cache-Control": "public, max-age=60"},
+        )
+    except Exception as exc:
+        return func.HttpResponse(
+            json.dumps({"error": str(exc)}),
+            status_code=500,
+            mimetype="application/json",
+        )
 
 
 @app.timer_trigger(

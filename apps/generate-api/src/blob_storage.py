@@ -5,6 +5,7 @@ Blob Storage 保存ロジック
 import os
 import re
 from collections.abc import Iterable
+from datetime import datetime
 
 from azure.storage.blob import BlobServiceClient
 
@@ -103,3 +104,64 @@ def delete_old_blobs_for_algorithm(algorithm_name: str, max_count: int) -> int:
     for blob_name in delete_targets:
         container_client.delete_blob(blob_name)
     return len(delete_targets)
+
+
+_BLOB_FILE_PATTERN = re.compile(
+    r"^(?P<title>.+)_w(?P<width>\d+)_h(?P<height>\d+)_(?P<text>n|c|tl|tr|bl|br)\.png$",
+    re.IGNORECASE,
+)
+
+
+def _parse_blob_item(blob) -> dict | None:
+    name = blob.name
+    if "/" not in name:
+        return None
+
+    algorithm, file_name = name.split("/", 1)
+    match = _BLOB_FILE_PATTERN.match(file_name)
+    if not match:
+        return None
+
+    raw_title = match.group("title")
+    title = raw_title.replace("_", " ")
+    width = int(match.group("width"))
+    height = int(match.group("height"))
+    text_token = match.group("text").lower()
+    last_modified = blob.last_modified.isoformat() if isinstance(blob.last_modified, datetime) else None
+
+    return {
+        "blob_name": name,
+        "algorithm": algorithm,
+        "file_name": file_name,
+        "title": title,
+        "width": width,
+        "height": height,
+        "text_token": text_token,
+        "last_modified": last_modified,
+    }
+
+
+def list_recent_shared_items(limit: int) -> list[dict]:
+    container_client = _get_container_client()
+    blobs = container_client.list_blobs()
+    sorted_blobs = sorted(
+        blobs,
+        key=lambda b: b.last_modified or 0,
+        reverse=True,
+    )
+
+    items: list[dict] = []
+    for blob in sorted_blobs:
+        parsed = _parse_blob_item(blob)
+        if parsed is None:
+            continue
+        items.append(parsed)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def get_blob_png_bytes(blob_name: str) -> bytes:
+    container_client = _get_container_client()
+    blob_client = container_client.get_blob_client(blob_name)
+    return blob_client.download_blob().readall()
