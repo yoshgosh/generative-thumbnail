@@ -20,8 +20,8 @@ var shortUniqueId = take(uniqueId, 5)
 var lawName = 'law-${organizationName}-${projectName}-${env}-${locationCode}'
 
 // storage
-var imagesStName = take('st${organizationName}${projectName}images${env}${locationCode}${shortUniqueId}', 24)
-var imagesContainerName = 'images'
+var imgsStName = take('st${organizationName}${projectName}imgs${env}${locationCode}${shortUniqueId}', 24)
+var imgsContainerName = 'images'
 
 
 // generate-api
@@ -43,8 +43,8 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 }
 
 // storage
-resource imagesSt 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: imagesStName
+resource imgsSt 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: imgsStName
   location: location
   sku: { name: 'Standard_LRS' }
   kind: 'StorageV2'
@@ -53,9 +53,9 @@ resource imagesSt 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-resource imagesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  parent: imagesSt::blobServices
-  name: imagesContainerName
+resource imgsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: imgsSt::blobServices
+  name: imgsContainerName
 }
 
 // generate-api
@@ -127,7 +127,7 @@ resource generateApiFunc 'Microsoft.Web/sites@2024-11-01' = {
         { name: 'AzureWebJobsStorage', value: 'DefaultEndpointsProtocol=https;AccountName=${generateApiSt.name};AccountKey=${generateApiSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
         { name: 'DEPLOYMENT_STORAGE_CONNECTION_STRING', value: 'DefaultEndpointsProtocol=https;AccountName=${generateApiSt.name};AccountKey=${generateApiSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: generateApiAppi.properties.ConnectionString }
-        { name: 'AZURE_IMAGES_STORAGE_CONNECTION_STRING', value: 'DefaultEndpointsProtocol=https;AccountName=${imagesSt.name};AccountKey=${imagesSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
+        { name: 'AZURE_IMGS_STORAGE_CONNECTION_STRING', value: 'DefaultEndpointsProtocol=https;AccountName=${imgsSt.name};AccountKey=${imgsSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
       ]
     }
   }
@@ -149,6 +149,6 @@ resource displayWebStapp 'Microsoft.Web/staticSites@2024-11-01' = {
 
 // ----- outputs -----
 output generateApiFuncName string = generateApiFunc.name
-output imagesStName string = imagesSt.name
+output imgsStName string = imgsSt.name
 output displayWebStappName string = displayWebStapp.name
 output generateApiDefaultHostName string = generateApiFunc.properties.defaultHostName
