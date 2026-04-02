@@ -489,7 +489,7 @@ export default function App() {
                             >
                                 利用規約
                             </button>
-                            に同意しました。
+                            に同意します。
                         </span>
                     </div>
                     <label className="sr-only" htmlFor="title-input">
