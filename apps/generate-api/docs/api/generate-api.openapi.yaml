@@ -21,6 +21,7 @@ paths:
         - $ref: "#/components/parameters/width"
         - $ref: "#/components/parameters/height"
         - $ref: "#/components/parameters/algorithm"
+        - $ref: "#/components/parameters/save"
       responses:
         "200":
           description: PNG image
@@ -113,6 +114,13 @@ components:
         type: string
         default: 001_v1.0.0
         enum: [001_v1.0.0]
+    save:
+      name: save
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
 
   schemas:
     TextPosition:
@@ -159,6 +167,9 @@ components:
           type: string
           default: 001_v1.0.0
           enum: [001_v1.0.0]
+        save:
+          type: boolean
+          default: false
 
     ErrorResponse:
       type: object

@@ -20,14 +20,14 @@ type StoredDownloadOptions = {
 type CurrentImage = {
     url: string;
     title: string;
+    fileName: string;
     generated: boolean;
-    options: DownloadOptions;
 };
 
 type HistoryItem = {
     url: string;
     title: string;
-    options: DownloadOptions;
+    fileName: string;
 };
 
 type CustomDownloadTarget = {
@@ -41,12 +41,8 @@ export default function App() {
     const [currentImage, setCurrentImage] = useState<CurrentImage>({
         url: '/Hello World!.png',
         title: 'Hello World!',
+        fileName: 'Hello_World!_w400_h400_br.png',
         generated: false,
-        options: {
-            scale: 'x1',
-            ratio: '1:1',
-            textPosition: 'BR',
-        },
     });
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [historyLayout, setHistoryLayout] = useState({ columns: 1 });
@@ -134,22 +130,25 @@ export default function App() {
                 width: 400,
                 height: 400,
                 algorithm: '001_v1.0.0',
+                save: true,
             });
             const nextUrl = URL.createObjectURL(blob);
+            const nextFileName = buildFileName({
+                title: nextTitle,
+                width: 400,
+                height: 400,
+                textToken: 'br',
+            });
 
             if (currentImage.generated) {
-                setHistory((prev) => [{ url: currentImage.url, title: currentImage.title, options: currentImage.options }, ...prev]);
+                setHistory((prev) => [{ url: currentImage.url, title: currentImage.title, fileName: currentImage.fileName }, ...prev]);
             }
 
             setCurrentImage({
                 url: nextUrl,
                 title: nextTitle,
+                fileName: nextFileName,
                 generated: true,
-                options: {
-                    scale: 'x1',
-                    ratio: '1:1',
-                    textPosition: 'BR',
-                },
             });
             setTitle('');
         } catch (err) {
@@ -165,23 +164,22 @@ export default function App() {
         return safe || 'thumbnail';
     };
 
-    const ratioToken = (ratio: DownloadRatio) => {
-        if (ratio === '1:1') {
-            return '11';
-        }
-        if (ratio === '4:3') {
-            return '43';
-        }
-        return '169';
-    };
-
-    const buildFileName = (name: string, options: DownloadOptions) =>
-        `${sanitizeFileTitle(name)}_${options.scale}_${ratioToken(options.ratio)}_${options.textPosition}.png`;
+    const buildFileName = ({
+        title: fileTitle,
+        width,
+        height,
+        textToken,
+    }: {
+        title: string;
+        width: number;
+        height: number;
+        textToken: 'n' | 'c' | 'tl' | 'tr' | 'bl' | 'br';
+    }) => `${sanitizeFileTitle(fileTitle)}_w${width}_h${height}_${textToken}.png`;
 
     const handleDownload = (item: HistoryItem) => {
         const a = document.createElement('a');
         a.href = item.url;
-        a.download = buildFileName(item.title, item.options);
+        a.download = item.fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -190,7 +188,7 @@ export default function App() {
     const handleDownloadCurrent = () => {
         const a = document.createElement('a');
         a.href = currentImage.url;
-        a.download = buildFileName(currentImage.title, currentImage.options);
+        a.download = currentImage.fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -221,21 +219,21 @@ export default function App() {
 
     const resolveTextOption = (position: DownloadTextPosition) => {
         if (position === 'N') {
-            return { text: false as const, text_position: 'bottom-right' as const };
+            return { text: false as const, text_position: 'bottom-right' as const, text_token: 'n' as const };
         }
         if (position === 'C') {
-            return { text: true as const, text_position: 'center' as const };
+            return { text: true as const, text_position: 'center' as const, text_token: 'c' as const };
         }
         if (position === 'TL') {
-            return { text: true as const, text_position: 'top-left' as const };
+            return { text: true as const, text_position: 'top-left' as const, text_token: 'tl' as const };
         }
         if (position === 'TR') {
-            return { text: true as const, text_position: 'top-right' as const };
+            return { text: true as const, text_position: 'top-right' as const, text_token: 'tr' as const };
         }
         if (position === 'BL') {
-            return { text: true as const, text_position: 'bottom-left' as const };
+            return { text: true as const, text_position: 'bottom-left' as const, text_token: 'bl' as const };
         }
-        return { text: true as const, text_position: 'bottom-right' as const };
+        return { text: true as const, text_position: 'bottom-right' as const, text_token: 'br' as const };
     };
 
     const handleCustomDownload = async () => {
@@ -247,7 +245,7 @@ export default function App() {
         setError(null);
         try {
             const { width, height } = resolveDimensions(customScale, customRatio);
-            const { text, text_position } = resolveTextOption(customTextPosition);
+            const { text, text_position, text_token } = resolveTextOption(customTextPosition);
             const blob = await generateThumbnail({
                 title: customTarget.title,
                 text,
@@ -255,15 +253,17 @@ export default function App() {
                 width,
                 height,
                 algorithm: '001_v1.0.0',
+                save: false,
             });
 
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = buildFileName(customTarget.title, {
-                scale: customScale,
-                ratio: customRatio,
-                textPosition: customTextPosition,
+            a.download = buildFileName({
+                title: customTarget.title,
+                width,
+                height,
+                textToken: text_token,
             });
             document.body.appendChild(a);
             a.click();

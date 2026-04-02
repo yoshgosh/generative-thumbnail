@@ -9,6 +9,7 @@ export type GenerateRequest = {
     width?: number;
     height?: number;
     algorithm?: string;
+    save?: boolean;
 };
 
 export async function generateThumbnail(request: GenerateRequest): Promise<Blob> {

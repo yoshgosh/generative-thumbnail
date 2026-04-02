@@ -4,9 +4,14 @@ from urllib.parse import quote
 import azure.functions as func
 from pydantic import ValidationError
 
+from src.blob_storage import save_png_to_imgs_storage, to_text_token
 from src.image_generator import DEFAULT_ALGORITHM_NAME, list_algorithms
 from src.api_models import GenerateRequest
-from src.thumbnail_service import create_thumbnail_png_bytes
+from src.thumbnail_service import (
+    create_thumbnail_png_bytes,
+    normalize_text_position,
+    resolve_dimensions,
+)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -27,6 +32,7 @@ def _read_payload(req: func.HttpRequest) -> dict:
         "width",
         "height",
         "algorithm",
+        "save",
     ):
         value = req.params.get(key)
         if value is not None:
@@ -79,6 +85,26 @@ def generate(req: func.HttpRequest) -> func.HttpResponse:
             height=request_model.height,
             algorithm_name=str(algorithm_name),
         )
+
+        if request_model.save:
+            resolved_width, resolved_height = resolve_dimensions(
+                size=request_model.size,
+                width=request_model.width,
+                height=request_model.height,
+            )
+            normalized_text_position = normalize_text_position(request_model.text_position)
+            text_token = to_text_token(
+                draw_text=request_model.text,
+                normalized_text_position=normalized_text_position,
+            )
+            save_png_to_imgs_storage(
+                png_bytes=png_bytes,
+                algorithm_name=str(algorithm_name),
+                title=request_model.title,
+                width=resolved_width,
+                height=resolved_height,
+                text_token=text_token,
+            )
 
         return func.HttpResponse(
             body=png_bytes,

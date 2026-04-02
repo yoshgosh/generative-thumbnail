@@ -32,3 +32,4 @@ class GenerateRequest(BaseModel):
     width: int | None = None
     height: int | None = None
     algorithm: str = DEFAULT_ALGORITHM_NAME
+    save: bool = False
