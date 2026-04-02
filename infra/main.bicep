@@ -154,4 +154,5 @@ resource displayWebStapp 'Microsoft.Web/staticSites@2024-11-01' = {
 output generateApiFuncName string = generateApiFunc.name
 output imgsStName string = imgsSt.name
 output displayWebStappName string = displayWebStapp.name
+output displayWebDefaultHostName string = displayWebStapp.properties.defaultHostname
 output generateApiDefaultHostName string = generateApiFunc.properties.defaultHostName

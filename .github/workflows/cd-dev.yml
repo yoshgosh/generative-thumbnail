@@ -41,6 +41,7 @@ jobs:
             AZURE_GENERATE_API_FUNC_NAME: ${{ steps.deploy.outputs.generateApiFuncName }}
             AZURE_IMAGES_ST_NAME: ${{ steps.deploy.outputs.imagesStName }}
             AZURE_DISPLAY_WEB_STAPP_NAME: ${{ steps.deploy.outputs.displayWebStappName }}
+            AZURE_DISPLAY_WEB_DEFAULT_HOST_NAME: ${{ steps.deploy.outputs.displayWebDefaultHostName }}
             AZURE_GENERATE_API_DEFAULT_HOST_NAME: ${{ steps.deploy.outputs.generateApiDefaultHostName }}
         steps:
             - name: "checkout"
@@ -136,6 +137,7 @@ jobs:
               uses: Azure/static-web-apps-deploy@v1
               env:
                   VITE_API_BASE_URL: "https://${{ needs.infra-deploy.outputs.AZURE_GENERATE_API_DEFAULT_HOST_NAME }}/api"
+                  VITE_SITE_URL: "https://${{ needs.infra-deploy.outputs.AZURE_DISPLAY_WEB_DEFAULT_HOST_NAME }}"
               with:
                   azure_static_web_apps_api_token: ${{ steps.get_swa_token.outputs.token }}
                   action: "upload"

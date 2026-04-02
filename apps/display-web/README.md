@@ -27,11 +27,16 @@ npm run dev
 
 - `VITE_API_BASE_URL`（任意）
 - 未設定時は `http://localhost:7071/api` を使用
+- `VITE_SITE_URL`（任意）
+- OGP用の公開URL（CDでは自動注入）
 
 例:
 
 ```bash
-echo "VITE_API_BASE_URL=http://localhost:7071/api" > .env.local
+cat <<'EOF' > .env.local
+VITE_API_BASE_URL=http://localhost:7071/api
+VITE_SITE_URL=http://localhost:5173
+EOF
 ```
 
 ## 実装仕様（現状）
