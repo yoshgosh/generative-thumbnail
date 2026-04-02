@@ -71,3 +71,6 @@ curl -X POST "http://localhost:7071/api/generate" \
 - 保存に使う設定値:
   - `AZURE_IMGS_STORAGE_CONNECTION_STRING`
   - `AZURE_IMGS_STORAGE_CONTAINER`
+- 定期クリーンアップ設定:
+  - `CLEANUP_SCHEDULE`（NCRONTAB, 既定 `0 */15 * * * *`）
+  - `MAX_IMAGES_PER_ALGORITHM`（アルゴリズムごとの保持上限、既定 `50`）

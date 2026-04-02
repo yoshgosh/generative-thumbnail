@@ -1,10 +1,11 @@
 import json
+import os
 from urllib.parse import quote
 
 import azure.functions as func
 from pydantic import ValidationError
 
-from src.blob_storage import save_png_to_imgs_storage, to_text_token
+from src.blob_storage import delete_old_blobs_for_algorithm, save_png_to_imgs_storage, to_text_token
 from src.image_generator import DEFAULT_ALGORITHM_NAME, list_algorithms
 from src.api_models import GenerateRequest
 from src.thumbnail_service import (
@@ -14,6 +15,7 @@ from src.thumbnail_service import (
 )
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+DEFAULT_MAX_IMAGES_PER_ALGORITHM = 50
 
 
 def _content_disposition(filename_base: str) -> str:
@@ -121,3 +123,29 @@ def generate(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
             mimetype="application/json",
         )
+
+
+def _resolve_max_images_per_algorithm() -> int:
+    raw = os.getenv("MAX_IMAGES_PER_ALGORITHM", str(DEFAULT_MAX_IMAGES_PER_ALGORITHM))
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return DEFAULT_MAX_IMAGES_PER_ALGORITHM
+
+
+@app.timer_trigger(
+    schedule="%CLEANUP_SCHEDULE%",
+    arg_name="timer",
+    run_on_startup=False,
+    use_monitor=True,
+)
+def cleanup_old_images(timer: func.TimerRequest) -> None:
+    max_count = _resolve_max_images_per_algorithm()
+    if max_count <= 0:
+        return
+
+    deleted_total = 0
+    for spec in list_algorithms():
+        deleted_count = delete_old_blobs_for_algorithm(spec.name, max_count=max_count)
+        deleted_total += deleted_count
+    print(f"cleanup_old_images completed. deleted_total={deleted_total}, max_count={max_count}")
