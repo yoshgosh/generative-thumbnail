@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { type CSSProperties, FormEvent, useEffect, useState } from 'react';
 import { generateThumbnail } from './api/generate';
 
 type CurrentImage = {
@@ -20,8 +20,26 @@ export default function App() {
         generated: false,
     });
     const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [historyLayout, setHistoryLayout] = useState({ columns: 1, tileSize: 250 });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const gap = 6;
+        const minTile = 250;
+        const maxTile = 350;
+
+        const recalc = () => {
+            const available = Math.max(320, window.innerWidth - gap * 2);
+            const columns = Math.max(1, Math.floor((available + gap) / (minTile + gap)));
+            const tileSize = Math.min(maxTile, (available - gap * (columns - 1)) / columns);
+            setHistoryLayout({ columns, tileSize });
+        };
+
+        recalc();
+        window.addEventListener('resize', recalc);
+        return () => window.removeEventListener('resize', recalc);
+    }, []);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -95,14 +113,24 @@ export default function App() {
                     <span>History</span>
                 </div>
                 <div className="history-grid">
-                    {history.map((item, index) => (
+                    <div
+                        className="history-grid-inner"
+                        style={
+                            {
+                                ['--history-columns' as string]: historyLayout.columns,
+                                ['--history-tile-size' as string]: `${historyLayout.tileSize}px`,
+                            } as CSSProperties
+                        }
+                    >
+                        {history.map((item, index) => (
                         <img
                             key={`${item.url}-${index}`}
                             src={item.url}
                             alt={item.title}
                             className="history-item"
                         />
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </section>
         </main>
