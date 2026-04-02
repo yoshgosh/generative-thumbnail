@@ -15,16 +15,27 @@ type HistoryApiResponse = {
     items: HistoryApiItem[];
     limit: number;
     count: number;
+    cursor: number;
+    next_cursor: number | null;
 };
 
-export async function getRecentHistory(limit = 12): Promise<HistoryApiItem[]> {
+export async function getRecentHistory(
+    limit = 12,
+    cursor?: number | null,
+): Promise<{ items: HistoryApiItem[]; nextCursor: number | null }> {
     const query = new URLSearchParams({ limit: String(limit) });
+    if (cursor !== undefined && cursor !== null) {
+        query.set('cursor', String(cursor));
+    }
     const res = await fetch(`${env.VITE_API_BASE_URL}/history?${query.toString()}`);
     if (!res.ok) {
         throw new Error(`History request failed with status ${res.status}`);
     }
     const data = (await res.json()) as HistoryApiResponse;
-    return data.items ?? [];
+    return {
+        items: data.items ?? [],
+        nextCursor: data.next_cursor ?? null,
+    };
 }
 
 export function buildHistoryImageUrl(blobName: string): string {

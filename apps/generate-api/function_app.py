@@ -152,13 +152,33 @@ def _resolve_history_limit(req: func.HttpRequest) -> int:
     return max(1, min(parsed, MAX_HISTORY_LIMIT))
 
 
+def _resolve_history_cursor(req: func.HttpRequest) -> int:
+    raw = req.params.get("cursor")
+    if raw is None or raw == "":
+        return 0
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return 0
+    return max(0, parsed)
+
+
 @app.route(route="history", methods=["GET"])
 def history(req: func.HttpRequest) -> func.HttpResponse:
     try:
         limit = _resolve_history_limit(req)
-        items = list_recent_shared_items(limit=limit)
+        cursor = _resolve_history_cursor(req)
+        items, next_cursor = list_recent_shared_items(limit=limit, offset=cursor)
         return func.HttpResponse(
-            json.dumps({"items": items, "limit": limit, "count": len(items)}),
+            json.dumps(
+                {
+                    "items": items,
+                    "limit": limit,
+                    "count": len(items),
+                    "cursor": cursor,
+                    "next_cursor": next_cursor,
+                }
+            ),
             status_code=200,
             mimetype="application/json",
         )

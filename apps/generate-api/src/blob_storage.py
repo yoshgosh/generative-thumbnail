@@ -141,7 +141,12 @@ def _parse_blob_item(blob) -> dict | None:
     }
 
 
-def list_recent_shared_items(limit: int) -> list[dict]:
+def list_recent_shared_items(limit: int, offset: int = 0) -> tuple[list[dict], int | None]:
+    if offset < 0:
+        offset = 0
+    if limit < 1:
+        limit = 1
+
     container_client = _get_container_client()
     blobs = container_client.list_blobs()
     sorted_blobs = sorted(
@@ -150,15 +155,17 @@ def list_recent_shared_items(limit: int) -> list[dict]:
         reverse=True,
     )
 
-    items: list[dict] = []
+    parsed_items: list[dict] = []
     for blob in sorted_blobs:
         parsed = _parse_blob_item(blob)
         if parsed is None:
             continue
-        items.append(parsed)
-        if len(items) >= limit:
-            break
-    return items
+        parsed_items.append(parsed)
+
+    page = parsed_items[offset : offset + limit]
+    next_offset = offset + len(page)
+    next_cursor = next_offset if next_offset < len(parsed_items) else None
+    return page, next_cursor
 
 
 def get_blob_png_bytes(blob_name: str) -> bytes:

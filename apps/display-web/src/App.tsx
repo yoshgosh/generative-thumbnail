@@ -27,6 +27,7 @@ type CurrentImage = {
 };
 
 type HistoryItem = {
+    blobName: string;
     url: string;
     title: string;
     fileName: string;
@@ -41,6 +42,8 @@ const CUSTOM_OPTIONS_STORAGE_KEY = 'display-web.custom-download-options';
 
 export default function App() {
     const [title, setTitle] = useState('');
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [currentImage, setCurrentImage] = useState<CurrentImage>({
         url: '/Hello World!.png',
         title: 'Hello World!',
@@ -49,6 +52,8 @@ export default function App() {
         shared: false,
     });
     const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [historyNextCursor, setHistoryNextCursor] = useState<number | null>(null);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [historyLayout, setHistoryLayout] = useState({ columns: 1 });
     const [isLoading, setIsLoading] = useState(false);
     const [isCustomDownloading, setIsCustomDownloading] = useState(false);
@@ -123,18 +128,20 @@ export default function App() {
         let alive = true;
         (async () => {
             try {
-                const items = await getRecentHistory(12);
+                const { items, nextCursor } = await getRecentHistory(12);
                 if (!alive) {
                     return;
                 }
                 setHistory(
                     items.map((item) => ({
+                        blobName: item.blob_name,
                         url: buildHistoryImageUrl(item.blob_name),
                         title: item.title,
                         fileName: item.file_name,
                         shared: true,
                     })),
                 );
+                setHistoryNextCursor(nextCursor);
             } catch {
                 // keep empty history on initial load failure
             }
@@ -144,8 +151,49 @@ export default function App() {
         };
     }, []);
 
+    const loadMoreHistory = async () => {
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
+        if (isHistoryLoading || historyNextCursor === null) {
+            return;
+        }
+        setIsHistoryLoading(true);
+        try {
+            const { items, nextCursor } = await getRecentHistory(12, historyNextCursor);
+            const mapped: HistoryItem[] = items.map((item) => ({
+                blobName: item.blob_name,
+                url: buildHistoryImageUrl(item.blob_name),
+                title: item.title,
+                fileName: item.file_name,
+                shared: true,
+            }));
+            setHistory((prev) => {
+                const seen = new Set(prev.map((it) => it.blobName));
+                const merged = [...prev];
+                for (const item of mapped) {
+                    if (!seen.has(item.blobName)) {
+                        merged.push(item);
+                        seen.add(item.blobName);
+                    }
+                }
+                return merged;
+            });
+            setHistoryNextCursor(nextCursor);
+        } catch {
+            // keep current history on pagination error
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
         if (!title.trim() || isLoading) {
             return;
         }
@@ -174,6 +222,7 @@ export default function App() {
             if (currentImage.generated) {
                 setHistory((prev) => [
                     {
+                        blobName: `local:${currentImage.url}`,
                         url: currentImage.url,
                         title: currentImage.title,
                         fileName: currentImage.fileName,
@@ -217,6 +266,10 @@ export default function App() {
     }) => `${sanitizeFileTitle(fileTitle)}_w${width}_h${height}_${textToken}.png`;
 
     const handleDownload = (item: HistoryItem) => {
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
         const a = document.createElement('a');
         a.href = item.url;
         a.download = item.fileName;
@@ -226,6 +279,10 @@ export default function App() {
     };
 
     const handleDownloadCurrent = () => {
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
         const a = document.createElement('a');
         a.href = currentImage.url;
         a.download = currentImage.fileName;
@@ -235,6 +292,10 @@ export default function App() {
     };
 
     const handleShare = async (item: { title: string; url: string }, kind: 'current' | 'history') => {
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
         if (isSharing) {
             return;
         }
@@ -270,6 +331,10 @@ export default function App() {
     };
 
     const openCustomDownload = (target: CustomDownloadTarget) => {
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
         setCustomTarget(target);
     };
 
@@ -312,6 +377,10 @@ export default function App() {
     };
 
     const handleCustomDownload = async () => {
+        if (!agreedToTerms) {
+            setIsTermsModalOpen(true);
+            return;
+        }
         if (!customTarget || isCustomDownloading) {
             return;
         }
@@ -403,7 +472,26 @@ export default function App() {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="generate-form">
+                <form onSubmit={handleSubmit} className="generate-form" autoComplete="off">
+                    <div className="terms-consent">
+                        <input
+                            type="checkbox"
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            className="terms-checkbox"
+                            aria-label="利用規約に同意する"
+                        />
+                        <span className="terms-inline-text">
+                            <button
+                                type="button"
+                                className="terms-link"
+                                onClick={() => setIsTermsModalOpen(true)}
+                            >
+                                利用規約
+                            </button>
+                            に同意しました。
+                        </span>
+                    </div>
                     <label className="sr-only" htmlFor="title-input">
                         Title
                     </label>
@@ -414,7 +502,10 @@ export default function App() {
                             onChange={(e) => setTitle(e.target.value)}
                             className="title-input"
                             placeholder="e.g. Hello World!"
-                            required
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                         />
                         <button
                             type="submit"
@@ -443,8 +534,8 @@ export default function App() {
                             } as CSSProperties
                         }
                     >
-                        {history.map((item, index) => (
-                            <div key={`${item.url}-${index}`} className="history-card">
+                        {history.map((item) => (
+                            <div key={item.blobName} className="history-card">
                                 <img
                                     src={item.url}
                                     alt={item.title}
@@ -496,6 +587,18 @@ export default function App() {
                         ))}
                     </div>
                 </div>
+                {history.length > 0 ? (
+                    <div className="history-load-more-wrap">
+                        <button
+                            type="button"
+                            className="history-load-more-button"
+                            onClick={loadMoreHistory}
+                            disabled={isHistoryLoading || historyNextCursor === null}
+                        >
+                            {isHistoryLoading ? 'Loading...' : historyNextCursor === null ? 'No more' : 'Load more'}
+                        </button>
+                    </div>
+                ) : null}
             </section>
 
             {customTarget ? (
@@ -578,6 +681,47 @@ export default function App() {
                                 disabled={isCustomDownloading}
                             >
                                 {isCustomDownloading ? 'Generating...' : 'Download'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {isTermsModalOpen ? (
+                <div className="terms-modal-backdrop" role="presentation" onClick={() => setIsTermsModalOpen(false)}>
+                    <div
+                        className="terms-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="利用規約"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="terms-modal-title">利用規約</h2>
+                        <ul className="terms-list">
+                            <li>入力内容およびShare内容についての責任は、利用者本人が負います。</li>
+                            <li>誹謗中傷、差別、違法行為、公序良俗に反する投稿、第三者の権利侵害を禁止します。</li>
+                            <li>入力内容、生成条件、操作履歴などのログを運営者が記録・保管することに同意します。</li>
+                            <li>Shareした内容は他の利用者に閲覧・保存・再共有される可能性があり、完全な削除を保証しません。</li>
+                            <li>本サービス利用により生じた損害・トラブルについて、運営者の責任は法令上許される範囲で制限されます。</li>
+                            <li>運営者は、規約違反コンテンツの削除、利用停止、規約の改定を行うことができます。</li>
+                        </ul>
+                        <div className="terms-modal-actions">
+                            <button
+                                type="button"
+                                className="custom-action-button ghost"
+                                onClick={() => setIsTermsModalOpen(false)}
+                            >
+                                閉じる
+                            </button>
+                            <button
+                                type="button"
+                                className="custom-action-button"
+                                onClick={() => {
+                                    setAgreedToTerms(true);
+                                    setIsTermsModalOpen(false);
+                                }}
+                            >
+                                同意する
                             </button>
                         </div>
                     </div>

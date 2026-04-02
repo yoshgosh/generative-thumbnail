@@ -39,6 +39,7 @@ paths:
       summary: Get recent shared images
       parameters:
         - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
       responses:
         "200":
           description: Recent shared image list
@@ -165,6 +166,13 @@ components:
         minimum: 1
         maximum: 100
         default: 12
+    cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
 
   schemas:
     TextPosition:
@@ -261,7 +269,12 @@ components:
           type: integer
         count:
           type: integer
-      required: [items, limit, count]
+        cursor:
+          type: integer
+        next_cursor:
+          type: integer
+          nullable: true
+      required: [items, limit, count, cursor]
 
   responses:
     BadRequest:

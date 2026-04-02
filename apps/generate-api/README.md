@@ -56,9 +56,11 @@ func start
 ### History 取得仕様（`GET /api/history`）
 
 - `limit`（任意, 既定 `12`, 最大 `100`）
+- `cursor`（任意, 既定 `0`）
 - `last_modified` の新しい順で返却
 - レスポンス例:
   - `items[]`: `blob_name`, `algorithm`, `file_name`, `title`, `width`, `height`, `text_token`, `last_modified`
+  - `next_cursor`: 続きがある場合のカーソル（無ければ `null`）
 
 ### History画像取得仕様（`GET /api/history/image`）
 
@@ -79,7 +81,7 @@ curl -X POST "http://localhost:7071/api/generate" \
 ```
 
 ```bash
-curl "http://localhost:7071/api/history?limit=12"
+curl "http://localhost:7071/api/history?limit=12&cursor=0"
 ```
 
 ## 補足

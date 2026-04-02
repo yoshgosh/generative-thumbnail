@@ -62,6 +62,120 @@ body {
     width: min(400px, calc(100vw - 40px));
 }
 
+.terms-consent {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+    align-items: start;
+    margin-bottom: 10px;
+}
+
+.terms-checkbox {
+    margin-top: 1px;
+    width: 14px;
+    height: 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid #ffffff;
+    background: #000000;
+    border-radius: 0;
+    cursor: pointer;
+    position: relative;
+}
+
+.terms-checkbox::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0px;
+    width: 4px;
+    height: 8px;
+    border-right: 2px solid #ffffff;
+    border-bottom: 2px solid #ffffff;
+    transform: rotate(45deg);
+    opacity: 0;
+}
+
+.terms-checkbox:checked::after {
+    opacity: 1;
+}
+
+.terms-checkbox:focus-visible {
+    outline: 1px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.terms-inline-text {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 300;
+}
+
+.terms-link {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--text);
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 300;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+.terms-link:hover,
+.terms-link:focus-visible {
+    opacity: 0.85;
+    outline: none;
+}
+
+.terms-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.68);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 45;
+}
+
+.terms-modal {
+    width: min(560px, calc(100vw - 40px));
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.62)),
+        url('/modal.png') center / cover no-repeat;
+    padding: 20px;
+}
+
+.terms-modal-title {
+    margin: 0 0 14px;
+    font-size: 22px;
+    font-weight: 300;
+}
+
+.terms-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 300;
+}
+
+.terms-modal-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .input-row {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -136,15 +250,45 @@ body {
 
 .history-grid {
     margin-top: 14px;
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
+    margin-inline: calc(-1 * (var(--page-inline-padding) - var(--history-gap)));
 }
 
 .history-grid-inner {
     display: grid;
     grid-template-columns: repeat(var(--history-columns), minmax(0, 1fr));
     gap: var(--history-gap);
-    padding-inline: var(--history-gap);
+}
+
+.history-load-more-wrap {
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+}
+
+.history-load-more-button {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 300;
+    text-decoration: none;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    padding: 0;
+    cursor: pointer;
+}
+
+.history-load-more-button:hover,
+.history-load-more-button:focus-visible {
+    text-decoration: underline;
+    outline: none;
+}
+
+.history-load-more-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+    text-decoration: none;
 }
 
 .history-item {
@@ -236,6 +380,12 @@ body {
     outline: none;
 }
 
+.history-download-text:disabled {
+    opacity: 0.6;
+    cursor: default;
+    text-decoration: none;
+}
+
 .history-custom-download-text {
     border: 0;
     background: transparent;
@@ -255,6 +405,12 @@ body {
     text-decoration-thickness: 1px;
     text-underline-offset: 2px;
     outline: none;
+}
+
+.history-custom-download-text:disabled {
+    opacity: 0.6;
+    cursor: default;
+    text-decoration: none;
 }
 
 .history-card:hover .history-overlay,
@@ -277,8 +433,9 @@ body {
 
 .custom-modal {
     width: min(480px, calc(100vw - 40px));
-    border: 1px solid #2f2f2f;
-    background: #0b0b0b;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.62)),
+        url('/modal.png') center / cover no-repeat;
     padding: 20px;
 }
 
