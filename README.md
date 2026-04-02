@@ -18,6 +18,18 @@
 pip install -r requirements.txt
 ```
 
+### 同梱フォントのセットアップ
+
+```bash
+# 自動検出（macOS の代表パス）または明示パス指定で同梱フォントを配置
+./scripts/install_font.sh
+# または
+./scripts/install_font.sh /path/to/NotoSansJP-Bold.ttf
+```
+
+フォントは `src/assets/fonts/NotoSansJP-Bold.ttf` に配置され、
+実行環境（ローカル/サーバーレス）に依存せず同じ描画結果になります。
+
 ## 使い方
 
 ### 最小実行
@@ -54,6 +66,7 @@ python main.py "Hello" -t -tp bl
 | `--width` | `-w` | 出力横幅（指定時は `--size` より優先） | `None` |
 | `--height` | `-h` | 出力縦幅（指定時は `--size` より優先） | `None` |
 | `--output` | `-o` | 出力ディレクトリ | `output` |
+| `--algorithm` | `-a` | 使用する画像生成アルゴリズム | `001_v1.0.0` |
 
 ### サイズ指定の仕様
 
@@ -92,6 +105,13 @@ output/20260402_022515_aspect-fix.png
 ├── main.py
 ├── requirements.txt
 ├── .gitignore
+├── scripts/
+│   └── install_font.sh
+├── src/
+│   ├── image_generator.py
+│   ├── text_renderer.py
+│   └── algorithms/
+│       └── algo_001_v1_0_0.py
 ├── image/
 │   └── sample.png
 └── output/
