@@ -124,6 +124,7 @@ resource generateApiFunc 'Microsoft.Web/sites@2024-11-01' = {
         ]
       }
       appSettings: [
+        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
         { name: 'AzureWebJobsStorage', value: 'DefaultEndpointsProtocol=https;AccountName=${generateApiSt.name};AccountKey=${generateApiSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
         { name: 'DEPLOYMENT_STORAGE_CONNECTION_STRING', value: 'DefaultEndpointsProtocol=https;AccountName=${generateApiSt.name};AccountKey=${generateApiSt.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: generateApiAppi.properties.ConnectionString }

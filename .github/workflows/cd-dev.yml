@@ -97,6 +97,7 @@ jobs:
               with:
                   app-name: ${{ needs.infra-deploy.outputs.AZURE_GENERATE_API_FUNC_NAME }}
                   package: "apps/generate-api"
+                  remote-build: true
 
     display-web-deploy:
         name: "display-web: deploy"
