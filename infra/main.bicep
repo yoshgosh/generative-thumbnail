@@ -2,7 +2,7 @@
 param organizationName string = 'yosh'
 
 @description('Project name')
-param projectName string = 'rcb'
+param projectName string = 'gtn'
 
 @description('Deployment environment (dev, prd)')
 @allowed(['dev', 'prd'])
