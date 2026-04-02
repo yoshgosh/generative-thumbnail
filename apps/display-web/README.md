@@ -50,3 +50,9 @@ npm run lint
 npm run build
 npm run preview
 ```
+
+## Slack プレビューの条件
+
+- 共有URLがインターネットから到達可能であること（`localhost` は不可）
+- 初期HTMLに OGP タグ（`og:title` / `og:description` / `og:image`）が含まれること
+- `og:image` の画像URLが `https` で外部公開されていること
