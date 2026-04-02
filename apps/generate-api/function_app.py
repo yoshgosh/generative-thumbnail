@@ -1,0 +1,97 @@
+import json
+from urllib.parse import quote
+
+import azure.functions as func
+from pydantic import ValidationError
+
+from src.image_generator import DEFAULT_ALGORITHM_NAME, list_algorithms
+from src.api_models import GenerateRequest
+from src.thumbnail_service import create_thumbnail_png_bytes
+
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+
+def _content_disposition(filename_base: str) -> str:
+    encoded = quote(f"{filename_base}.png", safe="")
+    return f"inline; filename=\"thumbnail.png\"; filename*=UTF-8''{encoded}"
+
+
+def _read_payload(req: func.HttpRequest) -> dict:
+    payload: dict = {}
+    for key in (
+        "title",
+        "text",
+        "text_position",
+        "font_scale",
+        "size",
+        "width",
+        "height",
+        "algorithm",
+    ):
+        value = req.params.get(key)
+        if value is not None:
+            payload[key] = value
+
+    if req.get_body():
+        try:
+            body = req.get_json()
+            if isinstance(body, dict):
+                payload.update(body)
+        except ValueError:
+            pass
+    return payload
+
+
+@app.route(route="generate", methods=["GET", "POST"])
+def generate(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        payload = _read_payload(req)
+        try:
+            request_model = GenerateRequest.model_validate(payload)
+        except ValidationError as exc:
+            return func.HttpResponse(
+                json.dumps({"error": "validation_error", "details": exc.errors()}),
+                status_code=400,
+                mimetype="application/json",
+            )
+
+        algorithm_names = {spec.name for spec in list_algorithms()}
+        algorithm_name = request_model.algorithm or DEFAULT_ALGORITHM_NAME
+        if algorithm_name not in algorithm_names:
+            return func.HttpResponse(
+                json.dumps(
+                    {
+                        "error": "invalid algorithm",
+                        "available_algorithms": sorted(algorithm_names),
+                    }
+                ),
+                status_code=400,
+                mimetype="application/json",
+            )
+
+        png_bytes = create_thumbnail_png_bytes(
+            title=request_model.title,
+            draw_text=request_model.text,
+            text_position=request_model.text_position,
+            font_scale=request_model.font_scale,
+            size=request_model.size,
+            width=request_model.width,
+            height=request_model.height,
+            algorithm_name=str(algorithm_name),
+        )
+
+        return func.HttpResponse(
+            body=png_bytes,
+            status_code=200,
+            mimetype="image/png",
+            headers={
+                "Content-Disposition": _content_disposition(request_model.title),
+                "Cache-Control": "no-store",
+            },
+        )
+    except Exception as exc:
+        return func.HttpResponse(
+            json.dumps({"error": str(exc)}),
+            status_code=500,
+            mimetype="application/json",
+        )

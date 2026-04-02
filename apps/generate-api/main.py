@@ -9,26 +9,15 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from src.image_generator import (
-    DEFAULT_ALGORITHM_NAME,
-    generate_image,
-    list_algorithms,
+from src.image_generator import DEFAULT_ALGORITHM_NAME, list_algorithms
+from src.thumbnail_service import (
+    DEFAULT_TEXT_POSITION,
+    DEFAULT_FONT_SCALE,
+    DEFAULT_SIZE,
+    save_thumbnail_png,
 )
-from src.text_renderer import draw_title_text
 
-DEFAULT_SIZE = 500
 DEFAULT_OUTPUT_DIR = "output"
-DEFAULT_FONT_SCALE = 0.05
-DEFAULT_TEXT_POSITION = "center"
-MIN_SIZE = 16
-
-TEXT_POSITION_MAP = {
-    "c": "center",
-    "tl": "top-left",
-    "tr": "top-right",
-    "bl": "bottom-left",
-    "br": "bottom-right",
-}
 
 
 def generate_thumbnail(
@@ -49,44 +38,21 @@ def generate_thumbnail(
         生成された画像ファイルパス
     """
     Path(output_dir).mkdir(exist_ok=True)
-    resolved_width, resolved_height = resolve_dimensions(
-        size=size,
-        width=width,
-        height=height,
-    )
-
-    img = generate_image(
-        title=title,
-        width=resolved_width,
-        height=resolved_height,
-        algorithm_name=algorithm_name,
-    )
-
-    if draw_text:
-        img = draw_title_text(
-            img=img,
-            title=title,
-            text_position=text_position,
-            font_scale=font_scale,
-        )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_{title}.png"
     filepath = os.path.join(output_dir, filename)
-    img.save(filepath, "PNG")
-    return filepath
-
-
-def resolve_dimensions(
-    size: int,
-    width: int | None,
-    height: int | None,
-) -> tuple[int, int]:
-    """画像サイズを確定する（width/height が指定されたら優先）。"""
-    base_size = max(MIN_SIZE, int(size))
-    resolved_width = max(MIN_SIZE, int(width if width is not None else base_size))
-    resolved_height = max(MIN_SIZE, int(height if height is not None else base_size))
-    return resolved_width, resolved_height
+    return save_thumbnail_png(
+        output_path=filepath,
+        title=title,
+        draw_text=draw_text,
+        text_position=text_position,
+        font_scale=font_scale,
+        size=size,
+        width=width,
+        height=height,
+        algorithm_name=algorithm_name,
+    )
 
 
 def main() -> None:
@@ -160,9 +126,6 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    tp = args.text_position.lower()
-    args.text_position = TEXT_POSITION_MAP.get(tp, tp)
-
     try:
         filepath = generate_thumbnail(
             args.title,

@@ -1,0 +1,187 @@
+openapi: 3.0.3
+info:
+  title: Generate API
+  version: 1.0.0
+  description: Generate thumbnail PNG image.
+servers:
+  - url: https://{host}/api
+    variables:
+      host:
+        default: localhost:7071
+paths:
+  /generate:
+    get:
+      summary: Generate image (query parameters)
+      parameters:
+        - $ref: "#/components/parameters/title"
+        - $ref: "#/components/parameters/text"
+        - $ref: "#/components/parameters/text_position"
+        - $ref: "#/components/parameters/font_scale"
+        - $ref: "#/components/parameters/size"
+        - $ref: "#/components/parameters/width"
+        - $ref: "#/components/parameters/height"
+        - $ref: "#/components/parameters/algorithm"
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      summary: Generate image (JSON body)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    title:
+      name: title
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    text:
+      name: text
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+    text_position:
+      name: text_position
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/TextPosition"
+    font_scale:
+      name: font_scale
+      in: query
+      required: false
+      schema:
+        type: number
+        format: float
+        default: 0.05
+    size:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 500
+    width:
+      name: width
+      in: query
+      required: false
+      schema:
+        type: integer
+        nullable: true
+    height:
+      name: height
+      in: query
+      required: false
+      schema:
+        type: integer
+        nullable: true
+    algorithm:
+      name: algorithm
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 001_v1.0.0
+        enum: [001_v1.0.0]
+
+  schemas:
+    TextPosition:
+      type: string
+      enum:
+        - center
+        - top-left
+        - top-right
+        - bottom-left
+        - bottom-right
+        - c
+        - tl
+        - tr
+        - bl
+        - br
+      default: center
+
+    GenerateRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        text:
+          type: boolean
+          default: false
+        text_position:
+          $ref: "#/components/schemas/TextPosition"
+        font_scale:
+          type: number
+          format: float
+          default: 0.05
+        size:
+          type: integer
+          default: 500
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        algorithm:
+          type: string
+          default: 001_v1.0.0
+          enum: [001_v1.0.0]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [error]
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

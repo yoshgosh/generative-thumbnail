@@ -1,0 +1,142 @@
+name: cd-dev
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "infra/**"
+            - "apps/**"
+            - ".github/workflows/cd-dev.yml"
+
+permissions:
+    id-token: write
+    contents: read
+
+jobs:
+    changes:
+        name: "cd: detect changes"
+        runs-on: ubuntu-latest
+        outputs:
+            generate-api: ${{ steps.filter.outputs.generate-api }}
+            display-web: ${{ steps.filter.outputs.display-web }}
+            infra: ${{ steps.filter.outputs.infra }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dorny/paths-filter@v3
+              id: filter
+              with:
+                  filters: |
+                      generate-api:
+                          - 'apps/generate-api/**'
+                      display-web:
+                          - 'apps/display-web/**'
+                      infra:
+                          - 'infra/**'
+
+    infra-deploy:
+        name: "infra: deploy"
+        runs-on: ubuntu-latest
+        environment: dev
+        outputs:
+            AZURE_GENERATE_API_FUNC_NAME: ${{ steps.deploy.outputs.generateApiFuncName }}
+            AZURE_IMAGES_ST_NAME: ${{ steps.deploy.outputs.imagesStName }}
+            AZURE_DISPLAY_WEB_STAPP_NAME: ${{ steps.deploy.outputs.displayWebStappName }}
+            AZURE_GENERATE_API_DEFAULT_HOST_NAME: ${{ steps.deploy.outputs.generateApiDefaultHostName }}
+        steps:
+            - name: "checkout"
+              uses: actions/checkout@v4
+
+            - name: "login azure"
+              uses: azure/login@v2
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: "deploy bicep"
+              id: deploy
+              uses: azure/arm-deploy@v2
+              with:
+                  resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP_NAME }}
+                  template: infra/main.bicep
+                  parameters: infra/params/dev.bicepparam
+
+    generate-api-deploy:
+        name: "generate-api: deploy"
+        needs:
+            - changes
+            - infra-deploy
+        if: ${{ needs.changes.outputs.generate-api == 'true' || needs.changes.outputs.infra == 'true' }}
+        runs-on: ubuntu-latest
+        environment: dev
+        steps:
+            - name: "checkout"
+              uses: actions/checkout@v4
+
+            - name: "login azure"
+              uses: azure/login@v2
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: "setup python"
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+                  cache: "pip"
+                  cache-dependency-path: "apps/generate-api/requirements.txt"
+
+            - name: "install and build"
+              run: |
+                  cd apps/generate-api
+                  pip install -r requirements.txt
+
+            - name: "deploy function"
+              uses: azure/functions-action@v1
+              with:
+                  app-name: ${{ needs.infra-deploy.outputs.AZURE_GENERATE_API_FUNC_NAME }}
+                  package: "apps/generate-api"
+
+    display-web-deploy:
+        name: "display-web: deploy"
+        needs:
+            - changes
+            - infra-deploy
+        if: ${{ needs.changes.outputs.display-web == 'true' || needs.changes.outputs.infra == 'true' }}
+        runs-on: ubuntu-latest
+        environment: dev
+        steps:
+            - name: "checkout"
+              uses: actions/checkout@v4
+
+            - name: "login azure"
+              uses: azure/login@v2
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: "get static web app deploy token"
+              id: get_swa_token
+              env:
+                  AZURE_RESOURCE_GROUP_NAME: ${{ vars.AZURE_RESOURCE_GROUP_NAME }}
+                  AZURE_DISPLAY_WEB_STAPP_NAME: ${{ needs.infra-deploy.outputs.AZURE_DISPLAY_WEB_STAPP_NAME }}
+              run: |
+                  set -euo pipefail
+                  TOKEN="$(az staticwebapp secrets list \
+                    --name "${AZURE_DISPLAY_WEB_STAPP_NAME}" \
+                    --resource-group "${AZURE_RESOURCE_GROUP_NAME}" \
+                    --query properties.apiKey \
+                    -o tsv)"
+                  echo "token=${TOKEN}" >> "$GITHUB_OUTPUT"
+
+            - name: "deploy static web app"
+              uses: Azure/static-web-apps-deploy@v1
+              env:
+                  VITE_API_BASE_URL: "https://${{ needs.infra-deploy.outputs.AZURE_GENERATE_API_DEFAULT_HOST_NAME }}/api"
+              with:
+                  azure_static_web_apps_api_token: ${{ steps.get_swa_token.outputs.token }}
+                  action: "upload"
+                  app_location: "apps/display-web"
+                  output_location: "dist"
