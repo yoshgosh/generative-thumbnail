@@ -22,12 +22,14 @@ type CurrentImage = {
     title: string;
     fileName: string;
     generated: boolean;
+    shared: boolean;
 };
 
 type HistoryItem = {
     url: string;
     title: string;
     fileName: string;
+    shared: boolean;
 };
 
 type CustomDownloadTarget = {
@@ -43,11 +45,14 @@ export default function App() {
         title: 'Hello World!',
         fileName: 'Hello_World!_w400_h400_br.png',
         generated: false,
+        shared: false,
     });
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [historyLayout, setHistoryLayout] = useState({ columns: 1 });
     const [isLoading, setIsLoading] = useState(false);
     const [isCustomDownloading, setIsCustomDownloading] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [sharingTargetUrl, setSharingTargetUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [customTarget, setCustomTarget] = useState<CustomDownloadTarget | null>(null);
     const [customScale, setCustomScale] = useState<DownloadScale>('x1');
@@ -130,7 +135,7 @@ export default function App() {
                 width: 400,
                 height: 400,
                 algorithm: '001_v1.0.0',
-                save: true,
+                save: false,
             });
             const nextUrl = URL.createObjectURL(blob);
             const nextFileName = buildFileName({
@@ -141,7 +146,15 @@ export default function App() {
             });
 
             if (currentImage.generated) {
-                setHistory((prev) => [{ url: currentImage.url, title: currentImage.title, fileName: currentImage.fileName }, ...prev]);
+                setHistory((prev) => [
+                    {
+                        url: currentImage.url,
+                        title: currentImage.title,
+                        fileName: currentImage.fileName,
+                        shared: currentImage.shared,
+                    },
+                    ...prev,
+                ]);
             }
 
             setCurrentImage({
@@ -149,6 +162,7 @@ export default function App() {
                 title: nextTitle,
                 fileName: nextFileName,
                 generated: true,
+                shared: false,
             });
             setTitle('');
         } catch (err) {
@@ -192,6 +206,41 @@ export default function App() {
         document.body.appendChild(a);
         a.click();
         a.remove();
+    };
+
+    const handleShare = async (item: { title: string; url: string }, kind: 'current' | 'history') => {
+        if (isSharing) {
+            return;
+        }
+
+        setIsSharing(true);
+        setSharingTargetUrl(item.url);
+        setError(null);
+        try {
+            await generateThumbnail({
+                title: item.title,
+                text: true,
+                text_position: 'bottom-right',
+                width: 400,
+                height: 400,
+                algorithm: '001_v1.0.0',
+                save: true,
+            });
+            if (kind === 'current') {
+                setCurrentImage((prev) => ({ ...prev, shared: true }));
+            } else {
+                setHistory((prev) =>
+                    prev.map((historyItem) =>
+                        historyItem.url === item.url ? { ...historyItem, shared: true } : historyItem,
+                    ),
+                );
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+            setIsSharing(false);
+            setSharingTargetUrl(null);
+        }
     };
 
     const openCustomDownload = (target: CustomDownloadTarget) => {
@@ -287,24 +336,44 @@ export default function App() {
                     <div className="history-overlay">
                         <button
                             type="button"
-                            className="history-download-text"
-                            aria-label={`Download ${currentImage.title}`}
-                            onClick={handleDownloadCurrent}
-                        >
-                            Download
-                        </button>
-                        <button
-                            type="button"
-                            className="history-custom-download-text"
-                            aria-label={`Custom download ${currentImage.title}`}
+                            className="history-share-text"
+                            aria-label={`Share ${currentImage.title}`}
                             onClick={() =>
-                                openCustomDownload({
+                                handleShare({
                                     title: currentImage.title,
-                                })
+                                    url: currentImage.url,
+                                }, 'current')
                             }
+                            disabled={isSharing || currentImage.shared}
                         >
-                            Custom Download
+                            {currentImage.shared
+                                ? 'Shared'
+                                : isSharing && sharingTargetUrl === currentImage.url
+                                  ? 'Sharing...'
+                                  : 'Share'}
                         </button>
+                        <div className="history-overlay-actions">
+                            <button
+                                type="button"
+                                className="history-download-text"
+                                aria-label={`Download ${currentImage.title}`}
+                                onClick={handleDownloadCurrent}
+                            >
+                                Download
+                            </button>
+                            <button
+                                type="button"
+                                className="history-custom-download-text"
+                                aria-label={`Custom download ${currentImage.title}`}
+                                onClick={() =>
+                                    openCustomDownload({
+                                        title: currentImage.title,
+                                    })
+                                }
+                            >
+                                Custom Download
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -358,24 +427,44 @@ export default function App() {
                                 <div className="history-overlay">
                                     <button
                                         type="button"
-                                        className="history-download-text"
-                                        aria-label={`Download ${item.title}`}
-                                        onClick={() => handleDownload(item)}
-                                    >
-                                        Download
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="history-custom-download-text"
-                                        aria-label={`Custom download ${item.title}`}
+                                        className="history-share-text"
+                                        aria-label={`Share ${item.title}`}
                                         onClick={() =>
-                                            openCustomDownload({
+                                            handleShare({
                                                 title: item.title,
-                                            })
+                                                url: item.url,
+                                            }, 'history')
                                         }
+                                        disabled={isSharing || item.shared}
                                     >
-                                        Custom Download
+                                        {item.shared
+                                            ? 'Shared'
+                                            : isSharing && sharingTargetUrl === item.url
+                                              ? 'Sharing...'
+                                              : 'Share'}
                                     </button>
+                                    <div className="history-overlay-actions">
+                                        <button
+                                            type="button"
+                                            className="history-download-text"
+                                            aria-label={`Download ${item.title}`}
+                                            onClick={() => handleDownload(item)}
+                                        >
+                                            Download
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="history-custom-download-text"
+                                            aria-label={`Custom download ${item.title}`}
+                                            onClick={() =>
+                                                openCustomDownload({
+                                                    title: item.title,
+                                                })
+                                            }
+                                        >
+                                            Custom Download
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}

@@ -162,13 +162,39 @@ body {
 .history-overlay {
     position: absolute;
     inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 8px;
+    display: block;
     background: rgba(0, 0, 0, 0.45);
     opacity: 0;
     transition: opacity 0.15s ease;
+}
+
+.history-share-text {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    font-family: inherit;
+    font-weight: 300;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+}
+
+.history-overlay-actions {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, 64px);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .history-download-text {
@@ -181,6 +207,25 @@ body {
     text-decoration: none;
     cursor: pointer;
     padding: 0;
+}
+
+.history-share-text:hover,
+.history-share-text:focus-visible {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    outline: none;
+}
+
+.history-share-text:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.history-share-text:disabled:hover,
+.history-share-text:disabled:focus-visible {
+    text-decoration: none;
+    outline: none;
 }
 
 .history-download-text:hover,

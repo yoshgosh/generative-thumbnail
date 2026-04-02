@@ -15,7 +15,7 @@ from src.thumbnail_service import (
 )
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
-DEFAULT_MAX_IMAGES_PER_ALGORITHM = 50
+DEFAULT_MAX_IMAGES_PER_ALGORITHM = 10
 
 
 def _content_disposition(filename_base: str) -> str:
